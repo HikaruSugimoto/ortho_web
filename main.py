@@ -190,7 +190,7 @@ if Input_name is not None:
         Inp_all=pd.concat([Inp_all,conv[["index",Input_s]]],axis=0)
     Inp_all=pd.merge(Input_name, Inp_all,on=Input_s, how='outer')
     Inp_all=pd.merge(Inp_all, In2Out,on="index", how='inner')
-    Inp_all=pd.merge(Input_name, Inp_all,on="Mesocricetus_auratus", how='outer')
+    Inp_all=pd.merge(Input_name, Inp_all,on=Input_s, how='outer')
     Inp_all=Inp_all.drop("index", axis=1)
     Inp_all=Inp_all.rename(columns={Input_s: 'Input'}, inplace=False)
     Inp_all=Inp_all[["Input",Input_s+'_gene_symbol',Output_s+'_gene_symbol',Input_s+'_accession',Output_s+'_accession','Orthogroup']]
