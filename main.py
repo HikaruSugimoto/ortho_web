@@ -136,7 +136,7 @@ if Input_name is None:
     f.close()
        
     st.subheader('Help')
-    st.write("Download codes and run this web application on a local machine: ")
+    st.write("Download codes and run this web application on a local machine: https://github.com/HikaruSugimoto/ortho_web")
     st.write("Please send e-mail to Hikaru Sugimoto and Shinya Kuroda if you have any questions or requests.")
 #Output
 if Input_name is not None:
