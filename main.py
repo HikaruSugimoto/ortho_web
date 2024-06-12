@@ -72,7 +72,18 @@ def display_phylogenetic_tree(Phylo_s):
     #axes.set_title(df_ratio_all["OG"][i])
     #axes.set_xlim(-0.5, 1)
     st.pyplot(fig)       
-     
+
+def extract_first(x):
+    if pd.isna(x):
+        return x
+    parts = x.split(",")
+    unique_parts = []
+    for part in parts:
+        part = part.strip()
+        if part not in unique_parts:
+            unique_parts.append(part)
+    return ",".join(unique_parts)
+
 #Main
 st.set_page_config(layout="wide")
 st.title("A database of mammalian orthologs and phylogenetic trees")
@@ -82,7 +93,7 @@ upload_demo_data()
 options1 = ['Golden hamster (Mesocricetus auratus)','Human (Homo sapiens)',
             'Mouse (Mus musculus)','Rat (Rattus norvegicus)', 'Dog (Canis lupus familiaris)',
             'Elephant (Loxodonta africana)','Lesser hedgehog tenrec (Echinops telfairi)', 
-            'Thirteen-lined ground squirrel (Istidomys tridecemlineatus)',
+            'Thirteen-lined ground squirrel (Ictidomys tridecemlineatus)',
             'Gray mouse lemur (Microcebus murinus)', 'Little brown bat (Myotis lucifugus)',
             'Squirrel monkey (Saimiri boliviensis boliviensis)', 
             'Tasmanian devil (Sarcophilus harrisii)',
@@ -92,7 +103,7 @@ options2 = ['Mouse (Mus musculus)','Rat (Rattus norvegicus)','Human (Homo sapien
             'Golden hamster (Mesocricetus auratus)',
             'Dog (Canis lupus familiaris)',
             'Elephant (Loxodonta africana)','Lesser hedgehog tenrec (Echinops telfairi)', 
-            'Thirteen-lined ground squirrel (Istidomys tridecemlineatus)',
+            'Thirteen-lined ground squirrel (Ictidomys tridecemlineatus)',
             'Gray mouse lemur (Microcebus murinus)', 'Little brown bat (Myotis lucifugus)',
             'Squirrel monkey (Saimiri boliviensis boliviensis)', 
             'Tasmanian devil (Sarcophilus harrisii)',
@@ -137,18 +148,16 @@ if Input_name is not None:
     df_ortho=pd.read_csv('./Orthologues/Orthologues_'+Input_s+'/'+Input_s+'__v__'+Output_s+'.tsv', delimiter='\t')
     df_ortho=df_ortho.reset_index(drop=False)
     
-    #ID conversion
+    #Load ID conversion file
     ID_input=pd.read_csv('./ID_conversion/'+Input_s+'.tsv', delimiter='\t')
     ID_input=ID_input.rename(columns={"Protein accession": Input_s}, inplace=False)
-    ID_input=ID_input[[Input_s,"Symbol"]]
-    ID_input=ID_input.dropna().reset_index(drop=True)
+    ID_input=ID_input[[Input_s,"Symbol"]].dropna().reset_index(drop=True)
 
     ID_output=pd.read_csv('./ID_conversion/'+Output_s+'.tsv', delimiter='\t')
     ID_output=ID_output.rename(columns={"Protein accession": Output_s}, inplace=False)
-    ID_output=ID_output[[Output_s,"Symbol"]]
-    ID_output=ID_output.dropna().reset_index(drop=True)
+    ID_output=ID_output[[Output_s,"Symbol"]].dropna().reset_index(drop=True)
     
-    #Input species
+    #Convert input species ID to gene symbol
     Input_all=pd.DataFrame()
     All=df_ortho[Input_s].str.split(', ', expand=True).add_prefix('input_')
     All=pd.concat([df_ortho["index"],All],axis=1)
@@ -158,7 +167,7 @@ if Input_name is not None:
         Input_all=pd.concat([Input_all,conv[["index","Symbol"]]],axis=0)
     Input_all = Input_all.groupby("index").agg({'Symbol': lambda x: ', '.join(x)}).reset_index(drop=False)
 
-    #Output species
+    #Convert output species ID to gene symbol
     Output_all=pd.DataFrame()
     All=df_ortho[Output_s].str.split(', ', expand=True).add_prefix('output_')
     All=pd.concat([df_ortho["index"],All],axis=1)
@@ -179,39 +188,38 @@ if Input_name is not None:
     In2Out=In2Out.rename(columns={Input_s: Input_s+'_accession'}, inplace=False)
     In2Out=In2Out.rename(columns={Output_s: Output_s+'_accession'}, inplace=False)
     
-    #Input
-    Inp_all=pd.DataFrame()
+    #Convert input species gene symbol to output species gene symbol
     All=In2Out[Input_s+'_gene_symbol'].str.split(', ', expand=True).add_prefix('input_')
     All=pd.concat([In2Out["index"],All],axis=1)
+    In2Out1=In2Out.drop(Input_s+'_gene_symbol', axis=1)
 
+    Inp_all=pd.DataFrame()
     for i in range (0,len(All.T)-1):
-        conv=pd.merge(Input_name, All.rename(columns={"input_"+str(i): Input_s}, inplace=False).astype('object'),
-                                on=Input_s, how='inner')
-        Inp_all=pd.concat([Inp_all,conv[["index",Input_s]]],axis=0)
-    Inp_all=pd.merge(Input_name, Inp_all,on=Input_s, how='outer')
-    Inp_all=pd.merge(Inp_all, In2Out,on="index", how='inner')
-    Inp_all=pd.merge(Input_name, Inp_all,on=Input_s, how='outer')
-    Inp_all=Inp_all.drop("index", axis=1)
-    Inp_all=Inp_all.rename(columns={Input_s: 'Input'}, inplace=False)
-    Inp_all=Inp_all[["Input",Input_s+'_gene_symbol',Output_s+'_gene_symbol',Input_s+'_accession',Output_s+'_accession','Orthogroup']]
-
-    ID_input=ID_input.rename(columns={'Symbol': 'Input'}, inplace=False)
-    ID_input=ID_input.rename(columns={Input_s: Input_s+'_accession'}, inplace=False)
-
-    Input_name1=pd.merge(Input_name.rename(columns={Input_s: 'Input'}, inplace=False), ID_input,on="Input", how='inner')
-    Input_name1=pd.merge(Input_name.rename(columns={Input_s: 'Input'}, inplace=False), Input_name1,on="Input", how='outer')
-
-    Inp_all1=pd.merge(Inp_all, Input_name1,on="Input", how='inner')
-    Inp_all1=pd.merge(Inp_all1, Input_name1,on="Input", how='outer')
-    Inp_all1=Inp_all1[['Input',Input_s+'_accession_y',Output_s+'_accession',Output_s+'_gene_symbol','Orthogroup']]
-    Inp_all1=Inp_all1.rename(columns={Input_s+'_accession_y': Input_s+'_accession'}, inplace=False)
+        conv=All.rename(columns={"input_"+str(i): Input_s+'_gene_symbol'}, inplace=False)[["index",Input_s+'_gene_symbol']]
+        conv=pd.merge(In2Out1, conv[["index",Input_s+'_gene_symbol']].dropna(),on='index', how='inner')
+        Inp_all=pd.concat([Inp_all,conv[['index',"Orthogroup",Input_s+'_gene_symbol',
+                                        Output_s+'_gene_symbol',Input_s+'_accession',Output_s+'_accession']]],axis=0)
+    Inp_all=Inp_all.sort_values('index')
+    Inp_all=Inp_all.drop_duplicates()
+    Inp_all=Inp_all.drop('index', axis=1)    
+    
+    Inp_all1=pd.merge(Input_name.rename(columns={Input_s: Input_s+'_gene_symbol'}, inplace=False),
+                    Inp_all,on=Input_s+'_gene_symbol', how='inner')
+    Inp_all1=pd.merge(Input_name.rename(columns={Input_s: Input_s+'_gene_symbol'}, inplace=False),
+                    Inp_all1,on=Input_s+'_gene_symbol', how='outer')
+    Inp_all1=Inp_all1[[Input_s+'_gene_symbol',Output_s+'_gene_symbol',Input_s+'_accession',Output_s+'_accession','Orthogroup']]
     Inp_all1=Inp_all1.drop_duplicates()
+
+    Inp_all1['extracted']=Inp_all1[Output_s+'_gene_symbol'].apply(extract_first)
+    Inp_all1=Inp_all1.drop(Output_s+'_gene_symbol', axis=1)
+    Inp_all1=Inp_all1.rename(columns={'extracted': Output_s+'_gene_symbol'}, inplace=False)
+    Inp_all1=Inp_all1[[Input_s+'_gene_symbol',Output_s+'_gene_symbol',
+                    Input_s+'_accession',Output_s+'_accession','Orthogroup']]
+    Inp_all1=Inp_all1.rename(columns={Input_s+'_gene_symbol':'Input'}, inplace=False)
+    
     st.write(Inp_all1.set_index('Input'))
     download_result(Inp_all1)
     
     options3 = Inp_all1["Orthogroup"].dropna()
     Phylo_s= st.selectbox('Select the number of the ortholog group for which you want to display the phylogenetic tree.',options3)
     display_phylogenetic_tree(Phylo_s)
-    
-
-    
